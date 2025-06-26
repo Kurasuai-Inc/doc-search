@@ -10,6 +10,7 @@ ripgrepの高速性と高度な検索機能を組み合わせた、強力なド�
 
 - 🚀 高速全文検索（ripgrep統合）
 - 🔍 正規表現サポート
+- 🧠 セマンティック検索（意味的類似度検索）
 - 📊 検索結果の視覚的表示
 - ⚡ リアルタイムインクリメンタル検索
 - 🎨 星座テーマのTUI
@@ -34,6 +35,13 @@ brew install ripgrep
 sudo apt-get install ripgrep
 # Windows
 choco install ripgrep
+
+# セマンティック検索を使用する場合（オプション）
+uv pip install -e ".[semantic]"
+
+# .envファイルの設定（OpenAI Embeddingsを使う場合）
+cp .env.example .env
+# .envを編集してOPENAI_API_KEYを設定
 ```
 
 ## 使い方
@@ -50,6 +58,9 @@ doc-search --regex "TODO.*完了"
 
 # ファイルタイプを指定
 doc-search --type md --type py
+
+# セマンティック検索用のインデックス構築
+doc-search --index
 ```
 
 ## キーボードショートカット

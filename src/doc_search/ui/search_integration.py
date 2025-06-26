@@ -6,15 +6,21 @@ from typing import List, Optional
 import asyncio
 
 from ..core.ripgrep_wrapper import RipgrepWrapper, SearchOptions, SearchResult
+from ..core.semantic_search import SemanticSearchEngine, SemanticSearchResult
 from .tui_main import SearchResult as UISearchResult, SearchResultsContainer
 
 
 class SearchIntegration:
     """検索エンジンとUIの統合"""
     
-    def __init__(self, search_path: Path = None):
+    def __init__(self, search_path: Path = None, enable_semantic: bool = True):
         self.search_path = search_path or Path.cwd()
         self.ripgrep = RipgrepWrapper(fallback_to_python=True)
+        self.enable_semantic = enable_semantic
+        
+        # セマンティック検索エンジン（遅延初期化）
+        self._semantic_engine: Optional[SemanticSearchEngine] = None
+        self._semantic_available = self._check_semantic_available()
         
     async def perform_search(
         self, 
@@ -49,7 +55,7 @@ class SearchIntegration:
         # UI用の結果に変換
         ui_results = []
         for result in results:
-            # スコアを計算（仮実装）
+            # スコアを計算
             score = self._calculate_score(result, query)
             
             ui_result = UISearchResult(
@@ -59,6 +65,14 @@ class SearchIntegration:
                 score=score
             )
             ui_results.append(ui_result)
+            
+        # セマンティック検索が有効な場合
+        if self.enable_semantic and self._semantic_available:
+            semantic_results = await self._perform_semantic_search(query)
+            ui_results.extend(semantic_results)
+            
+        # スコアでソート
+        ui_results.sort(key=lambda x: x.score, reverse=True)
             
         return ui_results
         
@@ -98,3 +112,57 @@ class SearchIntegration:
     def update_search_path(self, path: Path):
         """検索パスを更新"""
         self.search_path = path
+        
+    def _check_semantic_available(self) -> bool:
+        """セマンティック検索が利用可能かチェック"""
+        try:
+            import sentence_transformers
+            return True
+        except ImportError:
+            import logging
+            logging.warning("sentence-transformersが見つかりません。セマンティック検索は無効です。")
+            return False
+            
+    async def _perform_semantic_search(self, query: str) -> List[UISearchResult]:
+        """セマンティック検索を実行"""
+        if self._semantic_engine is None:
+            self._semantic_engine = SemanticSearchEngine()
+            # インデックス構築（初回のみ）
+            await self._build_semantic_index()
+            
+        # セマンティック検索実行
+        semantic_results = self._semantic_engine.search(query, top_k=5)
+        
+        # UI用に変換
+        ui_results = []
+        for result in semantic_results:
+            ui_result = UISearchResult(
+                file_path=result.file_path,
+                line_number=0,  # セマンティック検索では行番号なし
+                content=f"[Semantic] {result.content[:100]}...",
+                score=int(result.similarity_score * 5)  # 0-1を1-5に変換
+            )
+            ui_results.append(ui_result)
+            
+        return ui_results
+        
+    async def _build_semantic_index(self):
+        """セマンティック検索用のインデックスを構築"""
+        documents = []
+        
+        # MarkdownとPythonファイルを収集
+        for pattern in ['**/*.md', '**/*.py', '**/*.txt']:
+            for file_path in self.search_path.glob(pattern):
+                try:
+                    content = file_path.read_text(encoding='utf-8', errors='ignore')
+                    documents.append((str(file_path), content))
+                except Exception:
+                    pass
+                    
+        # インデックス構築（非同期実行）
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            self._semantic_engine.build_index,
+            documents
+        )
