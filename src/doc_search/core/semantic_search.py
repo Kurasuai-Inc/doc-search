@@ -213,6 +213,8 @@ class SemanticSearchEngine:
         """埋め込みをキャッシュに保存"""
         cache_file = self.cache_dir / f"{cache_key}.pkl"
         try:
+            # キャッシュディレクトリが存在しない場合は作成
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
             with open(cache_file, 'wb') as f:
                 pickle.dump(embedding, f)
         except Exception as e:

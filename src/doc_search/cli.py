@@ -42,10 +42,17 @@ def main(path: Optional[str], regex: bool, type: tuple, index: bool, version: bo
         
         engine = SemanticSearchEngine(use_openai=use_openai)
         
-        # ドキュメントを収集
+        # ドキュメントを収集（パッケージディレクトリを除外）
         documents = []
         for pattern in ['**/*.md', '**/*.py', '**/*.txt']:
             for file_path in search_path.glob(pattern):
+                # パッケージディレクトリを除外
+                if any(part.startswith('.') or part in ['__pycache__', 'node_modules', 'env', 'venv'] 
+                       for part in file_path.parts):
+                    continue
+                # パッケージファイルを除外（site-packagesなど）
+                if 'site-packages' in str(file_path) or str(file_path).endswith('-env'):
+                    continue
                 try:
                     content = file_path.read_text(encoding='utf-8', errors='ignore')
                     documents.append((str(file_path), content))

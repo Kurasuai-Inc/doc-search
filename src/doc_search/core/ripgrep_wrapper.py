@@ -154,7 +154,7 @@ class RipgrepWrapper:
         # 正規表現パターンの準備
         if options.use_regex:
             flags = 0 if options.case_sensitive else re.IGNORECASE
-            pattern = re.compile(query, flags)
+            regex_pattern = re.compile(query, flags)
         else:
             # リテラル検索の場合
             query_lower = query if options.case_sensitive else query.lower()
@@ -167,8 +167,8 @@ class RipgrepWrapper:
         result_count = 0
         
         # ファイルを再帰的に検索
-        for pattern in file_patterns:
-            for file_path in path.rglob(pattern):
+        for file_pattern in file_patterns:
+            for file_path in path.rglob(file_pattern):
                 if result_count >= (options.max_results or float('inf')):
                     return
                     
@@ -176,7 +176,7 @@ class RipgrepWrapper:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         for line_num, line in enumerate(f, 1):
                             if options.use_regex:
-                                matches = list(pattern.finditer(line))
+                                matches = list(regex_pattern.finditer(line))
                                 for match in matches:
                                     yield SearchResult(
                                         file_path=str(file_path),
