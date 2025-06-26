@@ -1,0 +1,55 @@
+name: CI
+
+# トリガー設定
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: テストとリント
+    runs-on: ubuntu-latest
+    
+    steps:
+    # リポジトリのチェックアウト
+    - uses: actions/checkout@v4
+    
+    # Pythonのセットアップ
+    - name: Python環境のセットアップ
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    # uvのインストール
+    - name: uvのインストール
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    # 依存関係のインストール
+    - name: 依存関係のインストール
+      run: |
+        uv pip install --system -e ".[dev]"
+    
+    # ruffでリント
+    - name: Ruffでコードチェック
+      run: |
+        ruff check src/
+    
+    # mypyで型チェック
+    - name: mypyで型チェック
+      run: |
+        mypy src/
+    
+    # pytestでテスト実行
+    - name: テスト実行
+      run: |
+        pytest tests/ -v --cov=src/doc_search --cov-report=term-missing
+    
+    # ripgrepのインストール（テスト用）
+    - name: ripgrepのインストール
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ripgrep

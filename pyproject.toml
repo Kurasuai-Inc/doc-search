@@ -1,12 +1,13 @@
 [project]
 name = "doc-search"
 version = "0.1.0"
-description = "Document search tool with ripgrep integration"
+description = "ripgrep統合ドキュメント検索ツール - 検索の星座（StarFinder）"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "click>=8.0",
     "rich>=13.0",
+    "textual>=0.47.0",
     "pydantic>=2.0",
     "pyyaml>=6.0",
 ]

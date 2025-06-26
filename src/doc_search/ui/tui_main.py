@@ -211,32 +211,44 @@ class DocSearchApp(App):
         await self.perform_search(query)
         
     async def perform_search(self, query: str) -> None:
-        """検索を実行（仮実装）"""
-        # TODO: ripgrep統合後に実装
-        # 仮のデータで動作確認
+        """検索を実行（ripgrep統合版）"""
         import time
+        from .search_integration import SearchIntegration
+        
+        if not hasattr(self, 'search_integration'):
+            self.search_integration = SearchIntegration()
+        
         start_time = time.time()
         
-        # 仮の検索結果
-        dummy_results = [
-            ("docs/README.md", 23, f"This is the matched {query} in context...", 5),
-            ("src/main.py", 102, f"def search_{query}(text):", 4),
-            ("tests/test_search.py", 45, f"# Test for {query} functionality", 3),
-        ]
-        
-        for file_path, line_num, content, score in dummy_results:
-            result = SearchResult(file_path, line_num, content, score)
-            self.results_container.add_result(result)
-            await asyncio.sleep(0.1)  # アニメーション効果
+        try:
+            # 実際の検索を実行
+            results = await self.search_integration.perform_search(
+                query,
+                use_regex=True,  # TODO: UIから制御
+                file_types=None,  # TODO: UIから制御
+                max_results=100
+            )
             
-        # ステータス更新
-        elapsed = time.time() - start_time
-        self.status_bar.update_status(
-            status="Ready",
-            speed=f"{elapsed:.2f}s",
-            files=523,  # 仮の値
-            matches=len(dummy_results)
-        )
+            # 結果を表示
+            for result in results:
+                self.results_container.add_result(result)
+                await asyncio.sleep(0.01)  # スムーズなアニメーション
+                
+            # ステータス更新
+            elapsed = time.time() - start_time
+            self.status_bar.update_status(
+                status="Ready",
+                speed=f"{elapsed:.2f}s",
+                files=523,  # TODO: 実際のファイル数
+                matches=len(results)
+            )
+        except Exception as e:
+            # エラー時の処理
+            self.status_bar.update_status(
+                status=f"Error: {str(e)}",
+                speed="--",
+                matches=0
+            )
         
     def action_focus_search(self) -> None:
         """検索フィールドにフォーカス"""
